@@ -327,6 +327,10 @@ class $serializerImplName implements StructuredSerializer<$genericName> {
     '''}
   }
 
+  final _map = <String, Function(${name}Builder result, Serializers serializers, Object? value)> {
+    ${_generateFieldDeserializers()}
+  };
+
   @override
   $genericName deserialize(Serializers serializers, Iterable<Object$orNull> serialized,
       {FullType specifiedType = FullType.unspecified}) {
@@ -339,9 +343,7 @@ class $serializerImplName implements StructuredSerializer<$genericName> {
       final key = iterator.current as String;
       iterator.moveNext();
       final Object$orNull value = iterator.current;
-      switch (key) {
-        ${_generateFieldDeserializers()}
-      }
+      _map[key]?.call(result, serializers, value);
     }
 
     return result.build();
@@ -516,27 +518,27 @@ class $serializerImplName implements PrimitiveSerializer<$genericName> {
       if (field.builderFieldUsesNestedBuilder) {
         if (field.builderFieldAutoCreatesNestedBuilder || hasBuilder) {
           return '''
-case '${escapeString(field.wireName)}':
+'${escapeString(field.wireName)}': (result, serializers, value) {
   result.${field.name}.replace(serializers.deserialize(
       value, specifiedType: $fullType)$notNull $cast);
-  break;
+},
 ''';
         } else {
           return '''
-case '${escapeString(field.wireName)}':
+'${escapeString(field.wireName)}': (result, serializers, value) {
   result.${field.name} = (serializers.deserialize(
       value, specifiedType: $fullType) $cast).toBuilder();
-  break;
+},
 ''';
         }
       } else {
         // `cast` is empty if no cast is needed.
         var maybeOrNull = field.isNullable && cast.isNotEmpty ? orNull : '';
         return '''
-case '${escapeString(field.wireName)}':
+'${escapeString(field.wireName)}': (result, serializers, value) {
   result.${field.name} = serializers.deserialize(
       value, specifiedType: $fullType) $cast$maybeOrNull;
-  break;
+},
 ''';
       }
     }).join('');
